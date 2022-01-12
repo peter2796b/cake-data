@@ -7,7 +7,6 @@ use App\Services\EmployeeMapperService;
 use App\ViewModels\CakeDataViewModel;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Storage;
 
 class CakeDataGenerator extends Command
 {
@@ -47,19 +46,7 @@ class CakeDataGenerator extends Command
         $groupedByDayMonth = $this->GetDataGroupedByDayMonth($mapper->employees);
 
         $rawCakeData = $this->GetRawCakeData($groupedByDayMonth);
-        $processedData = [];
-        for ($index = 0; $index < count($rawCakeData); $index++) {
-            $cakeDatum = $rawCakeData[$index];
-            if ($index <= count($rawCakeData) - 2 && DateHelper::AreConsecutiveDates($cakeDatum->date->clone(), $rawCakeData[$index + 1]->date)) {
-                $cakeDatum = $this->CelebrateOnSameDay($cakeDatum, $rawCakeData[$index + 1]);
-                $index++;
-            }
-            // for last entry compare the previous date if they are consecutive
-            if ($index == count($rawCakeData) - 1 && DateHelper::AreConsecutiveDates($processedData[count($processedData) - 1]->date, $cakeDatum->date)) {
-                $cakeDatum->date = $cakeDatum->date->clone()->addDay();
-            }
-            $processedData[] = $cakeDatum;
-        }
+        $processedData = $this->ProcessData($rawCakeData);
 
         $this->WriteToFile($processedData);
 
@@ -175,5 +162,29 @@ class CakeDataGenerator extends Command
 
         fclose($stream);
 
+    }
+
+    /**
+     * Returns Processed data
+     *
+     * @param array $rawCakeData
+     * @return array
+     */
+    private function ProcessData(array $rawCakeData)
+    {
+        $processedData = [];
+        for ($index = 0; $index < count($rawCakeData); $index++) {
+            $cakeDatum = $rawCakeData[$index];
+            if ($index <= count($rawCakeData) - 2 && DateHelper::AreConsecutiveDates($cakeDatum->date->clone(), $rawCakeData[$index + 1]->date)) {
+                $cakeDatum = $this->CelebrateOnSameDay($cakeDatum, $rawCakeData[$index + 1]);
+                $index++;
+            }
+            // for last entry compare the previous date if they are consecutive
+            if ($index == count($rawCakeData) - 1 && DateHelper::AreConsecutiveDates($processedData[count($processedData) - 1]->date, $cakeDatum->date)) {
+                $cakeDatum->date = $cakeDatum->date->clone()->addDay();
+            }
+            $processedData[] = $cakeDatum;
+        }
+        return $processedData;
     }
 }
